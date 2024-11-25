@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parking Occupancy Detection</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #1a237e;
+            --secondary-color: #ffffff;
+            --accent-color: #64ffda;
+            --gradient-start: #1a237e;
+            --gradient-end: #0d47a1;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-color: #333333;
+        }
+
+        [data-theme="dark"] {
+            --primary-color: #121212;
+            --secondary-color: #ffffff;
+            --accent-color: #64ffda;
+            --gradient-start: #000000;
+            --gradient-end: #1a1a1a;
+            --card-bg: rgba(30, 30, 30, 0.95);
+            --text-color: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            line-height: 1.6;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            min-height: 100vh;
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .auth-buttons {
+            text-align: right;
+            margin-bottom: 2rem;
+        }
+
+        .auth-button {
+            background: linear-gradient(45deg, #00c853, #64ffda);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-left: 1rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .auth-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 200, 83, 0.4);
+        }
+
+        .hero-content {
+            text-align: center;
+            margin: 3rem 0;
+        }
+
+        .hero-content h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #64ffda, #00c853);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(100, 255, 218, 0.3);
+        }
+
+        .hero-content p {
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            color: var(--secondary-color);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+        }
+
+        .model-selection {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .model-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            color: var(--text-color);
+        }
+
+        .model-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .accuracy-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: linear-gradient(45deg, #00c853, #64ffda);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: white;
+        }
+
+        .model-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--accent-color);
+        }
+
+        .select-button {
+            background: linear-gradient(45deg, #00c853, #64ffda);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .select-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 200, 83, 0.4);
+        }
+
+        .theme-toggle {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--accent-color);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            transition: transform 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            transform: rotate(180deg);
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 15px;
+            max-width: 400px;
+            margin: 15% auto;
+            position: relative;
+            color: var(--text-color);
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-color);
+        }
+
+        .modal-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .modal-form input {
+            padding: 0.8rem;
+            border: 1px solid var(--accent-color);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-color);
+        }
+
+        @media (max-width: 768px) {
+            .model-selection {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="auth-buttons">
+            <button class="auth-button" onclick="openModal('signInModal')">Sign In</button>
+            <button class="auth-button" onclick="openModal('signUpModal')">Sign Up</button>
+        </div>
+
+        <div class="hero-content">
+            <h1>Parking Occupancy Detection</h1>
+            <p>Discover the future of smart parking with our Parking Occupancy Detection system. Leveraging state-of-the-art image analysis and AI technology, this tool provides accurate and efficient parking slot status detection.</p>
+        </div>
+
+        <div class="model-selection">
+            <div class="model-card">
+                <span class="accuracy-badge">78% Accuracy</span>
+                <div class="model-icon">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <h3>CNN Model</h3>
+                <p>State-of-the-art convolutional neural network for precise parking slot detection.</p>
+                <button class="select-button" onclick="selectModel('CNN')">Select Model</button>
+            </div>
+
+            <div class="model-card">
+                <span class="accuracy-badge">78% Accuracy</span>
+                <div class="model-icon">
+                    <i class="fas fa-tree"></i>
+                </div>
+                <h3>Decision Tree</h3>
+                <p>Simple yet effective tree-based model for interpretable predictions.</p>
+                <button class="select-button" onclick="selectModel('DecisionTree')">Select Model</button>
+            </div>
+
+            <div class="model-card">
+                <span class="accuracy-badge">78% Accuracy</span>
+                <div class="model-icon">
+                    <i class="fas fa-random"></i>
+                </div>
+                <h3>Random Forest</h3>
+                <p>Ensemble learning method combining multiple decision trees for robust predictions.</p>
+                <button class="select-button" onclick="selectModel('RandomForest')">Select Model</button>
+            </div>
+
+            <div class="model-card">
+                <span class="accuracy-badge">98% Accuracy</span>
+                <div class="model-icon">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <h3>Optimized Model</h3>
+                <p>Enhanced performance through advanced optimization techniques and parameter tuning.</p>
+                <button class="select-button" onclick="selectModel('Optimized')">Select Model</button>
+            </div>
+        </div>
+
+        <button class="theme-toggle" onclick="toggleTheme()">
+            <i class="fas fa-moon"></i>
+        </button>
+    </div>
+
+    <!-- Sign In Modal -->
+    <div id="signInModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('signInModal')">&times;</span>
+            <h2>Sign In</h2>
+            <form class="modal-form">
+                <input type="email" placeholder="Email" required>
+                <input type="password" placeholder="Password" required>
+                <button class="auth-button" type="submit">Sign In</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sign Up Modal -->
+    <div id="signUpModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('signUpModal')">&times;</span>
+            <h2>Sign Up</h2>
+            <form class="modal-form">
+                <input type="text" placeholder="Username" required>
+                <input type="email" placeholder="Email" required>
+                <input type="password" placeholder="Password" required>
+                <button class="auth-button" type="submit">Sign Up</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const currentTheme = document.body.dataset.theme;
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.body.dataset.theme = newTheme;
+            localStorage.setItem('theme', newTheme);
+        }
+
+        function selectModel(modelName) {
+            localStorage.setItem('selectedModel', modelName);
+            window.location.href = 'page 2.html';
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+
+        // Load saved theme
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.body.dataset.theme = savedTheme;
+            }
+        });
+    </script>
+</body>
+</html> 

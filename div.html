@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parking Slot Divider</title>
+    <style>
+        .container {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            margin: 20px auto;
+            border: 2px solid #ccc;
+            overflow: hidden;
+            background: #f5f5f5;
+        }
+
+        #uploadedImage {
+            width: 100%;
+            max-height: 800px;
+            display: none;
+            object-fit: contain;
+        }
+
+        .parking-slot {
+            position: absolute;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.15);
+            user-select: none;
+            touch-action: none;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            width: 35px !important;
+            height: 20px !important;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+            pointer-events: auto;
+        }
+
+        .parking-slot:hover {
+            border-color: #64ffda;
+            box-shadow: 0 4px 12px rgba(100, 255, 218, 0.3);
+        }
+
+        .parking-slot.dragging {
+            opacity: 0.7;
+            cursor: grabbing;
+        }
+
+        .parking-slot:active {
+            cursor: grabbing;
+        }
+
+        .slot-image-preview {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 80%;
+            max-height: 80vh;
+            z-index: 2001;
+            display: none;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .slot-number {
+            position: absolute;
+            top: -18px;
+            left: 0;
+            background: rgba(255, 255, 255, 0.9);
+            color: #000;
+            padding: 1px 5px;
+            font-size: 10px;
+            font-weight: bold;
+            border-radius: 2px;
+            z-index: 2;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .preview-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 2000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .preview-overlay.active {
+            opacity: 1;
+        }
+
+        .preview-overlay.active .slot-image-preview {
+            transform: scale(1);
+        }
+
+        .slot-image-preview {
+            max-width: 90%;
+            max-height: 80vh;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            width: 80%;
+            max-width: 500px;
+            margin: 50px auto;
+            border-radius: 8px;
+        }
+
+        .slot-upload {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .upload-btn {
+            background: #2196F3;
+        }
+
+        #imageUpload {
+            display: none;
+        }
+
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .scenario-selector {
+            margin-bottom: 15px;
+        }
+
+        .scenario-selector select {
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #4CAF50;
+            background: white;
+            cursor: pointer;
+            width: 200px;
+            color: #333;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .scenario-selector select:focus {
+            outline: none;
+            border-color: #2196F3;
+            box-shadow: 0 0 5px rgba(33, 150, 243, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="scenario-selector">
+            <select id="scenarioSelect" class="button">
+                <option value="scenario1">Scenario 1</option>
+                <option value="scenario2">Scenario 2</option>
+                <option value="scenario3">Scenario 3</option>
+            </select>
+        </div>
+        <input type="file" id="imageUpload" accept="image/*">
+        <button class="button upload-btn" onclick="document.getElementById('imageUpload').click()">Upload Image</button>
+        <button class="button" onclick="addParkingSlot()">Add Parking Slot</button>
+        <button class="button" onclick="startSlotImageUpload()">Save & Upload Slot Images</button>
+    </div>
+
+    <div class="container">
+        <img id="uploadedImage" alt="Parking Area">
+        <div id="parkingSlots"></div>
+    </div>
+
+    <!-- Modal for slot image upload -->
+    <div id="slotUploadModal" class="modal">
+        <div class="modal-content">
+            <h2>Upload Image for Slot <span id="currentSlotNumber"></span></h2>
+            <div class="slot-upload">
+                <input type="file" id="slotImageUpload" accept="image/*" style="display: none;">
+                <button class="button upload-btn" onclick="document.getElementById('slotImageUpload').click()">
+                    Choose Image
+                </button>
+            </div>
+            <img id="slotImagePreview" style="max-width: 100%; display: none;">
+            <button class="button" onclick="nextSlot()">Next Slot</button>
+        </div>
+    </div>
+
+    <script>
+        let slotCount = 0;
+        let slotImages = {};
+        let currentSlotIndex = 0;
+        let currentScenario = 'scenario1';
+        let defaultSlotSize = { width: 50, height: 50 };
+
+        const container = document.querySelector('.container');
+        const uploadedImage = document.getElementById('uploadedImage');
+        const imageUpload = document.getElementById('imageUpload');
+        const parkingSlotsContainer = document.getElementById('parkingSlots');
+        const slotUploadModal = document.getElementById('slotUploadModal');
+        const slotImageUpload = document.getElementById('slotImageUpload');
+        const slotImagePreview = document.getElementById('slotImagePreview');
+        const scenarioSelect = document.getElementById('scenarioSelect');
+
+        scenarioSelect.addEventListener('change', function(e) {
+            if (slotCount > 0) {
+                if (confirm('Changing scenarios will clear current layout. Do you want to continue?')) {
+                    currentScenario = e.target.value;
+                    clearLayout();
+                } else {
+                    scenarioSelect.value = currentScenario;
+                }
+            } else {
+                currentScenario = e.target.value;
+            }
+        });
+
+        function clearLayout() {
+            uploadedImage.style.display = 'none';
+            parkingSlotsContainer.innerHTML = '';
+            slotCount = 0;
+            slotImages = {};
+        }
+
+        imageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (!file.type.startsWith('image/')) {
+                    alert('Please select a valid image file');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        // Set fixed dimensions while maintaining aspect ratio
+                        const maxWidth = 800;
+                        const maxHeight = 600;
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        // Calculate aspect ratio
+                        if (width > maxWidth) {
+                            height = (maxWidth * height) / width;
+                            width = maxWidth;
+                        }
+                        if (height > maxHeight) {
+                            width = (maxHeight * width) / height;
+                            height = maxHeight;
+                        }
+
+                        // Set image and container dimensions
+                        uploadedImage.style.width = width + 'px';
+                        uploadedImage.style.height = height + 'px';
+                        uploadedImage.style.objectFit = 'contain';
+                        container.style.width = width + 'px';
+                        container.style.height = height + 'px';
+                        
+                        uploadedImage.src = e.target.result;
+                        uploadedImage.style.display = 'block';
+                        parkingSlotsContainer.innerHTML = '';
+                        slotCount = 0;
+                        slotImages = {};
+                    };
+                    img.src = e.target.result;
+                    img.onerror = function() {
+                        alert('Error loading image. Please try another image.');
+                    };
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function addParkingSlot() {
+            slotCount++;
+            const slot = document.createElement('div');
+            slot.className = 'parking-slot';
+            const slotNumber = document.createElement('span');
+            slotNumber.className = 'slot-number';
+            slotNumber.textContent = slotCount;
+            slot.appendChild(slotNumber);
+
+            // Use default size or copy from first slot if it exists
+            if (slotCount === 1) {
+                slot.style.width = defaultSlotSize.width + 'px';
+                slot.style.height = defaultSlotSize.height + 'px';
+            } else {
+                const firstSlot = document.querySelector('.parking-slot');
+                if (firstSlot) {
+                    slot.style.width = firstSlot.style.width;
+                    slot.style.height = firstSlot.style.height;
+                }
+            }
+
+            slot.style.left = '10px';
+            slot.style.top = '10px';
+
+            makeDraggable(slot);
+            makeResizable(slot);
+            parkingSlotsContainer.appendChild(slot);
+        }
+
+        function makeDraggable(element) {
+            let isDragging = false;
+            let currentX;
+            let currentY;
+            let initialX;
+            let initialY;
+
+            element.onmousedown = dragMouseDown;
+
+            function dragMouseDown(e) {
+                if (e.target !== element) return;
+                e.preventDefault();
+                
+                // Get the initial mouse position
+                initialX = e.clientX;
+                initialY = e.clientY;
+                
+                // Get current element position
+                const rect = element.getBoundingClientRect();
+                currentX = rect.left;
+                currentY = rect.top;
+                
+                isDragging = true;
+                element.classList.add('dragging');
+
+                document.onmousemove = elementDrag;
+                document.onmouseup = closeDragElement;
+            }
+
+            function elementDrag(e) {
+                e.preventDefault();
+                if (!isDragging) return;
+
+                // Calculate the new position
+                const deltaX = e.clientX - initialX;
+                const deltaY = e.clientY - initialY;
+                
+                // Get container and image boundaries
+                const containerRect = container.getBoundingClientRect();
+                const imageRect = uploadedImage.getBoundingClientRect();
+                const elementRect = element.getBoundingClientRect();
+
+                // Calculate new position relative to the image
+                let newLeft = currentX + deltaX - containerRect.left;
+                let newTop = currentY + deltaY - containerRect.top;
+
+                // Constrain to image boundaries
+                newLeft = Math.max(imageRect.left - containerRect.left, Math.min(newLeft, 
+                    imageRect.right - containerRect.left - elementRect.width));
+                newTop = Math.max(imageRect.top - containerRect.top, Math.min(newTop, 
+                    imageRect.bottom - containerRect.top - elementRect.height));
+
+                // Convert to percentages relative to container
+                const leftPercent = (newLeft / containerRect.width) * 100;
+                const topPercent = (newTop / containerRect.height) * 100;
+
+                // Apply new position
+                element.style.left = `${leftPercent}%`;
+                element.style.top = `${topPercent}%`;
+            }
+
+            function closeDragElement() {
+                isDragging = false;
+                element.classList.remove('dragging');
+                document.onmousemove = null;
+                document.onmouseup = null;
+            }
+
+            // Add touch support
+            element.addEventListener('touchstart', function(e) {
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousedown', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                dragMouseDown(mouseEvent);
+            }, { passive: false });
+
+            document.addEventListener('touchmove', function(e) {
+                if (!isDragging) return;
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousemove', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                elementDrag(mouseEvent);
+            }, { passive: false });
+
+            document.addEventListener('touchend', function(e) {
+                if (isDragging) {
+                    closeDragElement();
+                }
+            });
+        }
+
+        function makeResizable(slot) {
+            const resizer = document.createElement('div');
+            resizer.className = 'resizer';
+            slot.appendChild(resizer);
+
+            resizer.addEventListener('mousedown', initResize);
+
+            function initResize(e) {
+                e.stopPropagation();
+                window.addEventListener('mousemove', resize);
+                window.addEventListener('mouseup', stopResize);
+            }
+
+            function resize(e) {
+                const rect = slot.getBoundingClientRect();
+                const newWidth = Math.max(30, e.clientX - rect.left);
+                const newHeight = Math.max(30, e.clientY - rect.top);
+
+                slot.style.width = newWidth + 'px';
+                slot.style.height = newHeight + 'px';
+
+                // Update default size if this is the first slot
+                if (slot === document.querySelector('.parking-slot')) {
+                    defaultSlotSize = { width: newWidth, height: newHeight };
+                }
+            }
+
+            function stopResize() {
+                window.removeEventListener('mousemove', resize);
+                window.removeEventListener('mouseup', stopResize);
+            }
+        }
+
+        function startSlotImageUpload() {
+            if (slotCount === 0) {
+                alert('Please add parking slots first');
+                return;
+            }
+            currentSlotIndex = 1;
+            showSlotUploadModal();
+        }
+
+        function showSlotUploadModal() {
+            document.getElementById('currentSlotNumber').textContent = currentSlotIndex;
+            slotUploadModal.style.display = 'block';
+            slotImagePreview.style.display = 'none';
+        }
+
+        function nextSlot() {
+            const slotImageFile = document.getElementById('slotImageUpload').files[0];
+            if (!slotImageFile) {
+                alert('Please select an image for the slot');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // Store image for current slot
+                slotImages[currentSlotIndex] = e.target.result;
+                
+                // Find the slot and store image
+                const slots = document.querySelectorAll('.parking-slot');
+                const currentSlot = slots[currentSlotIndex - 1];  // Fix indexing
+                if (currentSlot) {
+                    currentSlot.dataset.slotImage = e.target.result;
+                }
+
+                document.getElementById('slotImageUpload').value = '';
+                document.getElementById('slotImagePreview').style.display = 'none';
+
+                // Move to next slot
+                currentSlotIndex++;
+                
+                // Check if we're done with all slots
+                if (currentSlotIndex > slotCount) {
+                    document.getElementById('slotUploadModal').style.display = 'none';
+                    if (confirm('Do you want to go to the analysis page? Click Cancel to work on other scenarios.')) {
+                        saveDivisionsAndImages();
+                        window.location.href = 'page 2.html';
+                    }
+                } else {
+                    document.getElementById('currentSlotNumber').textContent = currentSlotIndex;
+                }
+            };
+            reader.readAsDataURL(slotImageFile);
+        }
+
+        // Update the click handler for slots to show images
+        document.addEventListener('click', function(e) {
+            const slot = e.target.closest('.parking-slot');
+            if (slot && slot.dataset.slotImage && !slot.classList.contains('dragging')) {
+                const overlay = document.createElement('div');
+                overlay.className = 'preview-overlay';
+
+                const container = document.createElement('div');
+                container.className = 'preview-container';
+                container.style.position = 'relative';
+
+                const img = document.createElement('img');
+                img.className = 'slot-image-preview';
+                img.src = slot.dataset.slotImage;
+
+                const slotNumber = slot.querySelector('.slot-number').textContent;
+                const title = document.createElement('div');
+                title.className = 'preview-title';
+                title.textContent = `Slot ${slotNumber}`;
+                title.style.cssText = `
+                    position: absolute;
+                    top: -40px;
+                    left: 0;
+                    width: 100%;
+                    text-align: center;
+                    color: white;
+                    font-size: 24px;
+                    font-weight: bold;
+                `;
+
+                const closeButton = document.createElement('button');
+                closeButton.innerHTML = '×';
+                closeButton.style.cssText = `
+                    position: absolute;
+                    top: -50px;
+                    right: -50px;
+                    background: none;
+                    border: none;
+                    color: white;
+                    font-size: 36px;
+                    cursor: pointer;
+                    padding: 10px;
+                `;
+
+                container.appendChild(title);
+                container.appendChild(img);
+                container.appendChild(closeButton);
+                overlay.appendChild(container);
+                document.body.appendChild(overlay);
+
+                // Animate in
+                requestAnimationFrame(() => {
+                    overlay.classList.add('active');
+                });
+
+                const closeOverlay = () => {
+                    overlay.classList.remove('active');
+                    setTimeout(() => overlay.remove(), 300);
+                };
+
+                closeButton.onclick = closeOverlay;
+                overlay.onclick = (e) => {
+                    if (e.target === overlay) closeOverlay();
+                };
+            }
+        });
+
+        // Handle window resize
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(function() {
+                const slots = document.querySelectorAll('.parking-slot');
+                const containerRect = container.getBoundingClientRect();
+
+                slots.forEach(slot => {
+                    const left = parseFloat(slot.style.left);
+                    const top = parseFloat(slot.style.top);
+                    const width = parseFloat(slot.style.width);
+                    const height = parseFloat(slot.style.height);
+
+                    // Ensure slots stay within container bounds
+                    if (left + width > 100) slot.style.left = (100 - width) + '%';
+                    if (top + height > 100) slot.style.top = (100 - height) + '%';
+                });
+            }, 100);
+        });
+
+        function saveDivisionsAndImages() {
+            const slots = document.querySelectorAll('.parking-slot');
+            const containerRect = container.getBoundingClientRect();
+            const imageRect = uploadedImage.getBoundingClientRect();
+
+            const divisions = {
+                mainImage: uploadedImage.src,
+                containerWidth: imageRect.width,
+                containerHeight: imageRect.height,
+                imageWidth: imageRect.width,
+                imageHeight: imageRect.height,
+                slots: Array.from(slots).map(slot => {
+                    const rect = slot.getBoundingClientRect();
+                    const slotId = slot.querySelector('.slot-number').textContent.trim();
+
+                    const relativeLeft = rect.left - imageRect.left;
+                    const relativeTop = rect.top - imageRect.top;
+
+                    return {
+                        id: slotId,
+                        left: (relativeLeft / imageRect.width) * 100,
+                        top: (relativeTop / imageRect.height) * 100,
+                        width: (rect.width / imageRect.width) * 100,
+                        height: (rect.height / imageRect.height) * 100,
+                        slotImage: slot.dataset.slotImage || null
+                    };
+                })
+            };
+
+            localStorage.setItem(`parkingDivisions_${currentScenario}`, JSON.stringify(divisions));
+            alert('Layout saved successfully! Redirecting to analysis page...');
+            window.location.href = 'page 2.html';
+        }
+
+        slotImageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('slotImagePreview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Update the container and image styles
+        function updateContainerStyles() {
+            const containerStyle = `
+                .container {
+                    position: relative;
+                    width: 100%;
+                    max-width: 1200px;
+                    margin: 20px auto;
+                    border: 2px solid #ccc;
+                    overflow: hidden;
+                    background: #f5f5f5;
+                }
+
+                #uploadedImage {
+                    width: 100%;
+                    max-height: 800px;
+                    display: none;
+                    object-fit: contain;
+                }
+
+                .parking-slot {
+                    position: absolute;
+                    border: 2px solid rgba(255, 255, 255, 0.9);
+                    cursor: grab;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: rgba(255, 255, 255, 0.15);
+                    user-select: none;
+                    touch-action: none;
+                    z-index: 1000;
+                    transition: all 0.3s ease;
+                    width: 35px !important;
+                    height: 20px !important;
+                    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+                    pointer-events: auto;
+                }
+
+                .parking-slot:hover {
+                    border-color: #64ffda;
+                    box-shadow: 0 4px 12px rgba(100, 255, 218, 0.3);
+                }
+
+                .slot-number {
+                    position: absolute;
+                    top: -18px;
+                    left: 0;
+                    background: rgba(255, 255, 255, 0.9);
+                    color: #000;
+                    padding: 1px 5px;
+                    font-size: 10px;
+                    font-weight: bold;
+                    border-radius: 2px;
+                    z-index: 2;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+                }
+
+                .preview-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.85);
+                    z-index: 2000;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                }
+
+                .preview-overlay.active {
+                    opacity: 1;
+                }
+
+                .preview-overlay.active .slot-image-preview {
+                    transform: scale(1);
+                }
+
+                .slot-image-preview {
+                    max-width: 90%;
+                    max-height: 80vh;
+                    border-radius: 12px;
+                    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+                    transform: scale(0.95);
+                    transition: transform 0.3s ease;
+                }
+            `;
+
+            // Add styles to head if not already present
+            if (!document.querySelector('#container-styles')) {
+                const styleSheet = document.createElement('style');
+                styleSheet.id = 'container-styles';
+                styleSheet.textContent = containerStyle;
+                document.head.appendChild(styleSheet);
+            }
+        }
+
+        // Call this when the page loads
+        document.addEventListener('DOMContentLoaded', updateContainerStyles);
+    </script>
+</body>
+</html>
